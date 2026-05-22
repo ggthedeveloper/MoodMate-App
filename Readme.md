@@ -2,6 +2,8 @@
 
 The MoodMate wellness app has been significantly improved to be more realistic and functional. 
 
+Live at: https://ggthedeveloper.github.io/MoodMate-App/
+
 ### 📊 Enhanced Statistics & Insights
 - **Mood Trend Analysis**: Shows patterns in the past 7 days with insights
   - "Positive trend!" for happy/calm dominant moods
