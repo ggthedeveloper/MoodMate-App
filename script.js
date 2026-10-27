@@ -78,8 +78,8 @@ let breathingInterval = null, memoryState = {}, clickerState = {}, scrambleState
 function getUsers() { try { return JSON.parse(localStorage.getItem('mm_users')||'{}'); } catch { return {}; } }
 function saveUsers(u) { localStorage.setItem('mm_users',JSON.stringify(u)); }
 
-// Enhanced hash function
-function hash(s) { 
+// Security Hashing with Web Crypto SHA-256 and backward-compatible legacy fallback
+function legacyHash(s) { 
   let h=0;
   for(let i=0;i<s.length;i++){
     const c=s.charCodeAt(i);
@@ -87,6 +87,18 @@ function hash(s) {
     h=h&h;
   }
   return Math.abs(h).toString(36)+s.length.toString(36);
+}
+
+async function hash(s) {
+  if (typeof crypto !== 'undefined' && crypto.subtle && crypto.subtle.digest) {
+    try {
+      const msgUint8 = new TextEncoder().encode(s);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return 'sha256_' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (_) {}
+  }
+  return legacyHash(s);
 }
 
 function showLogin() {
@@ -108,7 +120,7 @@ function togglePass(id,btn) {
   el.type = el.type==='password'?'text':'password';
   btn.textContent = el.type==='password'?'👁':'🙈';
 }
-function doLogin() {
+async function doLogin() {
   const name = document.getElementById('loginName').value.trim();
   const pass = document.getElementById('loginPass').value;
   const err  = document.getElementById('loginError');
@@ -116,22 +128,32 @@ function doLogin() {
   if (!name || !pass) { err.textContent='Please fill in all fields.'; return; }
   
   const users = getUsers();
+  const userRecord = users[name.toLowerCase()];
   
-  if (!users[name.toLowerCase()]) { 
+  if (!userRecord) { 
     err.textContent='No account found. Please register first.'; 
     return; 
   }
+
+  const computed = await hash(pass);
+  const isMatch = userRecord.hash === computed || userRecord.hash === legacyHash(pass);
   
-  if (users[name.toLowerCase()].hash !== hash(pass)) { 
+  if (!isMatch) { 
     err.textContent='Incorrect password. Try again.'; 
     return; 
   }
+
+  // Seamlessly upgrade legacy hash to SHA-256 if needed
+  if (userRecord.hash !== computed && computed.startsWith('sha256_')) {
+    userRecord.hash = computed;
+    saveUsers(users);
+  }
   
   err.textContent='';
-  localStorage.setItem('mm_user', users[name.toLowerCase()].displayName);
+  localStorage.setItem('mm_user', userRecord.displayName);
   bootApp();
 }
-function doRegister() {
+async function doRegister() {
   const name  = document.getElementById('regName').value.trim();
   const pass  = document.getElementById('regPass').value;
   const pass2 = document.getElementById('regPass2').value;
@@ -164,9 +186,10 @@ function doRegister() {
     return; 
   }
   
+  const hashedPass = await hash(pass);
   users[name.toLowerCase()] = { 
     displayName: name, 
-    hash: hash(pass),
+    hash: hashedPass,
     createdAt: new Date().toISOString()
   };
   saveUsers(users);
@@ -217,21 +240,30 @@ function bootApp() {
   validateUserData();
 }
 
-window.onload = () => {
+function initMoodMate() {
   const user = localStorage.getItem('mm_user');
   if (user) { bootApp(); }
   else { document.getElementById('loginScreen').style.display='flex'; showRegister(); }
-  document.getElementById('journalText').addEventListener('input', updateWordCount);
+  const journalEl = document.getElementById('journalText');
+  if (journalEl) journalEl.addEventListener('input', updateWordCount);
   document.querySelectorAll('.modal-overlay').forEach(m => {
     m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); });
   });
   ['loginName','loginPass'].forEach(id => {
-    document.getElementById(id).addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
   });
   ['regName','regPass','regPass2'].forEach(id => {
-    document.getElementById(id).addEventListener('keydown', e => { if(e.key==='Enter') doRegister(); });
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if(e.key==='Enter') doRegister(); });
   });
-};
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initMoodMate);
+} else {
+  initMoodMate();
+}
 
 // Data validation and recovery
 function validateUserData() {
@@ -403,7 +435,7 @@ function calcStreak(history) {
   // Check if today has an entry
   const hasToday = sortedDates.some(d => d.toDateString() === expectedDate.toDateString());
   
-  // Start streak calculation from yesterday if no entry today
+  // If user hasn't logged today yet, maintain streak active from yesterday
   if (!hasToday) {
     expectedDate.setDate(expectedDate.getDate() - 1);
   }
@@ -415,11 +447,6 @@ function calcStreak(history) {
     } else if (d < expectedDate) {
       break;
     }
-  }
-  
-  // Keep streak if today matches, otherwise reset
-  if (!hasToday && streak > 0) {
-    streak = 0; // Reset if no entry for today
   }
   
   return streak;
@@ -492,7 +519,7 @@ function renderChart() {
   const values = Object.values(counts);
   const colors = Object.keys(counts).map(k => MOODS[k]?.color || '#888');
   
-  if(chartInstance){chartInstance.destroy();}
+  if(chartInstance){chartInstance.destroy(); chartInstance = null;}
   
   // Show both chart and insights
   const chartContainer = document.getElementById('moodChart');
@@ -513,6 +540,9 @@ function renderChart() {
     } else {
       insightHTML += '<span style="font-size:.85rem">⚖️ <strong>Mixed feelings.</strong> That\'s totally normal. Balance is key.</span>';
     }
+  } else {
+    const remaining = 7 - h.length;
+    insightHTML += `<span style="font-size:.85rem;color:#cbd5e1">🌱 Log <strong>${remaining}</strong> more ${remaining === 1 ? 'entry' : 'entries'} to unlock your 7-day emotional trend analysis!</span>`;
   }
   insightHTML += '</div>';
   
@@ -526,6 +556,42 @@ function renderChart() {
     parentDiv.querySelector('[data-insight-added]').innerHTML = insightHTML;
   }
   
+  // Offline or CDN resilience fallback
+  if (typeof Chart === 'undefined') {
+    chartContainer.style.display = 'none';
+    let fallbackEl = parentDiv.querySelector('.chart-fallback-breakdown');
+    if (!fallbackEl) {
+      fallbackEl = document.createElement('div');
+      fallbackEl.className = 'chart-fallback-breakdown';
+      parentDiv.appendChild(fallbackEl);
+    }
+    const total = values.reduce((a, b) => a + b, 0) || 1;
+    fallbackEl.innerHTML = `
+      <div style="font-size:0.85rem;color:#cbd5e1;margin-bottom:10px">Mood Breakdown (Past 30 Entries):</div>
+      ${Object.keys(counts).map(k => {
+        const pct = Math.round((counts[k] / total) * 100);
+        const col = MOODS[k]?.color || '#888';
+        return `
+          <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:3px">
+              <span>${MOODS[k]?.emoji || ''} ${k}</span>
+              <span>${counts[k]} (${pct}%)</span>
+            </div>
+            <div style="height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:${col};border-radius:3px"></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    `;
+    return;
+  }
+
+  // Restore chart container if Chart is loaded
+  chartContainer.style.display = 'block';
+  const existingFallback = parentDiv.querySelector('.chart-fallback-breakdown');
+  if (existingFallback) existingFallback.remove();
+
   chartInstance = new Chart(chartContainer.getContext('2d'), {
     type: 'doughnut',
     data: {

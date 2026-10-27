@@ -1,0 +1,17 @@
+{
+  "name": "moodmate-app",
+  "version": "1.1.0",
+  "description": "Your personal emotional wellness companion",
+  "main": "script.js",
+  "scripts": {
+    "test": "node tests/moodmate.test.js"
+  },
+  "keywords": [
+    "wellness",
+    "mood-tracker",
+    "journaling",
+    "mental-health"
+  ],
+  "author": "Gaurav Gautam <ggraipurchor@gmail.com>",
+  "license": "MIT"
+}

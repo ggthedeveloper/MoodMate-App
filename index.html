@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MoodMate</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 <link rel="stylesheet" href="style.css">
-<script src="script.js"></script>
+<script src="script.js" defer></script>
 </head>
 <body>
 
@@ -19,29 +19,29 @@
     <p class="login-sub" id="loginSub">Your personal emotional wellness companion.</p>
 
     <div id="loginForm">
-      <input class="login-input" id="loginName" placeholder="Your name" autocomplete="off">
+      <input class="login-input" id="loginName" placeholder="Your name" autocomplete="off" aria-label="Your Name">
       <div class="input-wrap">
-        <input class="login-input" id="loginPass" type="password" placeholder="Password">
-        <span class="pass-toggle" onclick="togglePass('loginPass',this)">👁</span>
+        <input class="login-input" id="loginPass" type="password" placeholder="Password" aria-label="Password">
+        <button type="button" class="pass-toggle" onclick="togglePass('loginPass',this)" aria-label="Toggle password visibility">👁</button>
       </div>
-      <div class="input-error" id="loginError"></div>
+      <div class="input-error" id="loginError" role="alert"></div>
       <button class="login-btn" onclick="doLogin()">Sign In →</button>
-      <div class="login-switch">No account? <span onclick="showRegister()">Create one</span></div>
+      <div class="login-switch">No account? <span onclick="showRegister()" role="button" tabindex="0">Create one</span></div>
     </div>
 
     <div id="registerForm" style="display:none">
-      <input class="login-input" id="regName" placeholder="Your name" autocomplete="off">
+      <input class="login-input" id="regName" placeholder="Your name" autocomplete="off" aria-label="Your Name">
       <div class="input-wrap">
-        <input class="login-input" id="regPass" type="password" placeholder="Create password (min 4 chars)">
-        <span class="pass-toggle" onclick="togglePass('regPass',this)">👁</span>
+        <input class="login-input" id="regPass" type="password" placeholder="Create password (min 4 chars)" aria-label="Create password">
+        <button type="button" class="pass-toggle" onclick="togglePass('regPass',this)" aria-label="Toggle password visibility">👁</button>
       </div>
       <div class="input-wrap">
-        <input class="login-input" id="regPass2" type="password" placeholder="Confirm password">
-        <span class="pass-toggle" onclick="togglePass('regPass2',this)">👁</span>
+        <input class="login-input" id="regPass2" type="password" placeholder="Confirm password" aria-label="Confirm password">
+        <button type="button" class="pass-toggle" onclick="togglePass('regPass2',this)" aria-label="Toggle password visibility">👁</button>
       </div>
-      <div class="input-error" id="regError"></div>
+      <div class="input-error" id="regError" role="alert"></div>
       <button class="login-btn" onclick="doRegister()">Create Account →</button>
-      <div class="login-switch">Have an account? <span onclick="showLogin()">Sign In</span></div>
+      <div class="login-switch">Have an account? <span onclick="showLogin()" role="button" tabindex="0">Sign In</span></div>
     </div>
   </div>
 </div>
@@ -53,10 +53,10 @@
   <header class="card header">
     <div class="logo"><div class="logo-dot"></div>MoodMate</div>
     <div class="header-actions">
-      <div class="streak-badge" id="streakBadge">🔥 0</div>
+      <div class="streak-badge" id="streakBadge" title="Consecutive day logging streak">🔥 0</div>
       <div class="user-chip"><div class="avatar" id="userAvatar">?</div><span id="userName">—</span></div>
-      <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme">☀️</button>
-      <button class="icon-btn" onclick="logout()" title="Log out">🚪</button>
+      <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">☀️</button>
+      <button class="icon-btn" onclick="logout()" title="Log out" aria-label="Log out">🚪</button>
     </div>
   </header>
 
